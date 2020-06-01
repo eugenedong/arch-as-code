@@ -39,6 +39,7 @@ public class AuPublishStoriesCommandTest {
     private JiraApi mockedJiraApi;
     private Application app;
     private FilesFacade spiedFilesFacade;
+    private GitInterface mockedGitInterface;
 
     final PrintStream originalOut = System.out;
     final PrintStream originalErr = System.err;
@@ -70,7 +71,9 @@ public class AuPublishStoriesCommandTest {
         mockedJiraApi = mock(JiraApi.class);
         when(mockedJiraApiFactory.create(spiedFilesFacade, rootDir.toPath())).thenReturn(mockedJiraApi);
 
-        app = new Application(mockedGoogleApiFactory, mockedJiraApiFactory, spiedFilesFacade, new GitInterface());
+        mockedGitInterface = mock(GitInterface.class);
+
+        app = new Application(mockedGoogleApiFactory, mockedJiraApiFactory, spiedFilesFacade, mockedGitInterface);
 
         Files.copy(rootDir.toPath().resolve("architecture-updates/test.yml"), rootDir.toPath().resolve("architecture-updates/test-clone.yml"));
     }
@@ -146,6 +149,9 @@ public class AuPublishStoriesCommandTest {
         Jira epic = Jira.blank();
         final JiraQueryResult epicInformation = new JiraQueryResult("PROJ_ID", "PROJ_KEY");
         when(mockedJiraApi.getStory(epic, "user", "password".toCharArray())).thenReturn(epicInformation);
+
+        when(mockedGitInterface.load("master", rootDir.toPath().resolve("product-architecture.yml")))
+                .thenReturn(Files.readString(rootDir.toPath().resolve("product-architecture.yml")).replaceAll("id", "deleted component id"));
 
         // WHEN:
         execute(app, "au publish -u user -p password " + rootDir.getAbsolutePath() + "/architecture-updates/test-clone.yml " + rootDir.getAbsolutePath());
@@ -247,7 +253,7 @@ public class AuPublishStoriesCommandTest {
     }
 
     @Test
-    public void shouldDisplayNiceErrorIfCreatingStoriesCrashes() throws JiraApi.JiraApiException {
+    public void shouldDisplayNiceErrorIfCreatingStoriesCrashes() throws Exception {
         when(mockedJiraApi.getStory(any(), any(), any())).thenReturn(new JiraQueryResult("ABC", "DEF"));
         when(mockedJiraApi.createStories(any(), any(), any(), any(), any(), any())).thenThrow(JiraApi.JiraApiException.builder().message("OOPS!").cause(new RuntimeException("Details")).build());
 
@@ -281,7 +287,7 @@ public class AuPublishStoriesCommandTest {
     }
 
     @Test
-    public void shouldDisplayGetStoryErrorsFromJira() throws JiraApi.JiraApiException {
+    public void shouldDisplayGetStoryErrorsFromJira() throws Exception {
         Jira epic = new Jira("[SAMPLE JIRA TICKET]", "[SAMPLE JIRA TICKET LINK]");
 
         when(mockedJiraApi.getStory(epic, "user", "password".toCharArray())).thenThrow(JiraApi.JiraApiException.builder().message("OOPS!").build());
@@ -302,6 +308,11 @@ public class AuPublishStoriesCommandTest {
                                         new Tdd.Id("[SAMPLE-TDD-ID]"),
                                         new Tdd("[SAMPLE TDD TEXT]"),
                                         "c4://Internet Banking System/API Application/Reset Password Controller"
+                                ),
+                                new JiraStory.JiraTdd(
+                                        new Tdd.Id("[SAMPLE-TDD-ID-2]"),
+                                        new Tdd("[SAMPLE TDD TEXT]"),
+                                        ""
                                 )
                         ),
                         List.of(
