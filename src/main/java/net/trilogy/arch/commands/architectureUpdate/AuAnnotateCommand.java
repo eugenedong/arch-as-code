@@ -83,7 +83,7 @@ public class AuAnnotateCommand implements Callable<Integer> {
 
     private String getComponentPathComment(String id, ArchitectureDataStructure architecture) {
         try {
-            return "  # " + architecture.getModel().findEntityById(id).getPath().getPath();
+            return "  # " + architecture.getModel().findEntityById(id).orElseThrow(() -> new IllegalStateException("Could not find entity with id: " + id)).getPath().getPath();
         } catch (Exception ignored) {
             return "";
         }
